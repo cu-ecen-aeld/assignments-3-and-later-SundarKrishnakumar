@@ -130,6 +130,7 @@ bool do_exec(int count, ...)
     else if (pid > 0) // Inside parent process    
     {
         
+        va_end(args);
 
         // Parent waits on the child
         if (waitpid(pid, &status, 0) == -1)
@@ -161,7 +162,7 @@ bool do_exec(int count, ...)
 
     } 
 
-    va_end(args);
+  
     return true;
     
 }
@@ -250,6 +251,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     {
         
         close(fd);
+        va_end(args);
 
         // Parent waits on the child
         if (waitpid(pid, &status, 0) == -1)
@@ -280,7 +282,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 
     }  
 
-    va_end(args);
+    
     return true;
 
 
