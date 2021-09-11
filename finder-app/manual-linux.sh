@@ -49,14 +49,6 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "build the kernel image"
     make -j8 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
 
-    # build the kernel modules 
-    echo "build the kernel modules"
-    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules
-
-    # build the dtb
-    echo "build the dtb"
-    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
-
     echo "Adding the Image in outdir"
     cp ./arch/${ARCH}/boot/Image ${OUTDIR}/
 
@@ -83,13 +75,6 @@ echo "Populating the directory tree under rootfs"
 mkdir bin dev etc home lib proc sbin sys tmp usr var
 mkdir usr/bin usr/lib usr/sbin
 mkdir -p var/log
-
-
-# install the compiled modules in the rootfs
-# cd ${OUTDIR}/linux-stable
-
-# make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} \
-# INSTALL_MOD_PATH=${OUTDIR}/rootfs modules_install
 
 
 cd "$OUTDIR"
