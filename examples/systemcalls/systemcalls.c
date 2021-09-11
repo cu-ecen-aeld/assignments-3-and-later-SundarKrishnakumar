@@ -1,4 +1,9 @@
 #include "systemcalls.h"
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -10,12 +15,55 @@
 bool do_system(const char *cmd)
 {
 
+    int status;
+
 /*
  * TODO  add your code here
  *  Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success 
  *   or false() if it returned a failure
 */
+    if (cmd != NULL)
+    {
+
+        status = system(cmd);
+
+        if (status < 0)
+        {
+
+            perror("system");
+            return false;
+
+        }
+        else
+        {
+
+            if (WIFEXITED(status))
+            {
+               if (WEXITSTATUS(status) == 0)
+                {
+                    // do nothing here
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                
+                return false;
+            }
+
+        }
+
+    }
+    else
+    {
+
+        return false;
+
+    }
 
     return true;
 }
@@ -36,6 +84,11 @@ bool do_system(const char *cmd)
 
 bool do_exec(int count, ...)
 {
+
+    pid_t pid;
+    int status;
+
+
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -59,9 +112,58 @@ bool do_exec(int count, ...)
  *   
 */
 
-    va_end(args);
+    pid = fork();
+    
+    // If fork() returns -1 no child process is created.
+    if (pid == -1) // inside parent process
+    {
+        va_end(args);
+        return false;
+    }
+    else if (pid == 0) // Inside child process
+    {
+        
+        execv(command[0], command);
+        exit(-1);
 
+    }
+    else if (pid > 0) // Inside parent process    
+    {
+        
+
+        // Parent waits on the child
+        if (waitpid(pid, &status, 0) == -1)
+        {
+            return false;
+        }
+        else
+        {
+            if (WIFEXITED(status))
+            {
+
+                if (WEXITSTATUS(status) == 0)
+                {
+                    // do nothing here
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+
+                return false;
+            }
+
+        } 
+
+
+    } 
+
+    va_end(args);
     return true;
+    
 }
 
 /**
@@ -71,6 +173,11 @@ bool do_exec(int count, ...)
 */
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
+    pid_t pid;
+    int fd;
+    int rc;
+    int status;
+
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -93,7 +200,88 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   
 */
 
-    va_end(args);
+
+    if (outputfile != NULL)
+    {
+        fd = open(outputfile, O_WRONLY|O_CREAT, 0644);
+
+        if (fd < 0)
+        {
+            perror("open");
+            return false;
+        }
+
+
+    }
+    else
+    {
+        return false;
+
+    }
+
     
+
+    pid = fork();
+    
+    // If fork() returns -1 no child process is created.
+    if (pid == -1) // inside parent process
+    {
+        close(fd);
+        va_end(args);
+        return false;
+    }
+    else if (pid == 0) // Inside child process
+    {
+        // redirect STD_OUT to the file we opened.
+        rc = dup2(fd, STDOUT_FILENO);
+
+        if (rc < 0)
+        {
+            perror("dup2");
+            return false;
+        }
+       
+        execv(command[0], command);
+        exit(-1);
+
+
+    }
+    else if (pid > 0) // Inside parent process    
+    {
+        
+        close(fd);
+
+        // Parent waits on the child
+        if (waitpid(pid, &status, 0) == -1)
+        {
+            return false;
+        }
+        else
+        {
+            if (WIFEXITED(status))
+            {
+
+                if (WEXITSTATUS(status) == 0)
+                {
+                    // do nothing here
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+
+                return false;
+            }
+
+        } 
+
+    }  
+
+    va_end(args);
     return true;
+
+
 }
