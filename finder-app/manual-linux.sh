@@ -12,7 +12,6 @@ BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
-PROJECT_HOME=/home/sundar/aesd/as3/assignment-3-SundarKrishnakumar
 
 if [ $# -lt 1 ]
 then
@@ -131,18 +130,18 @@ sudo mknod -m 666 dev/null c 1 3
 sudo mknod -m 600 dev/console c 5 1 
 
 # TODO: Clean and build the writer utility
-cd ${PROJECT_HOME}/finder-app/
+cd ${FINDER_APP_DIR}
 make  clean
 make CROSS_COMPILE=${CROSS_COMPILE} 
 
 
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
-cp ${PROJECT_HOME}/finder-app/finder-test.sh ${OUTDIR}/rootfs/home
-cp ${PROJECT_HOME}/finder-app/conf/ -r ${OUTDIR}/rootfs/home
-cp ${PROJECT_HOME}//finder-app/finder.sh ${OUTDIR}/rootfs/home
-cp ${PROJECT_HOME}/finder-app/writer ${OUTDIR}/rootfs/home
-cp ${PROJECT_HOME}/finder-app/autorun-qemu.sh ${OUTDIR}/rootfs/home
+cp ./finder-test.sh ${OUTDIR}/rootfs/home
+cp ./conf/ -r ${OUTDIR}/rootfs/home
+cp ./finder.sh ${OUTDIR}/rootfs/home
+cp ./writer ${OUTDIR}/rootfs/home
+cp ./autorun-qemu.sh ${OUTDIR}/rootfs/home
 
 # TODO: Chown the root directory
 cd ${OUTDIR}/rootfs
