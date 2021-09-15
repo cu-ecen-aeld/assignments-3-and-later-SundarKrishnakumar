@@ -29,7 +29,7 @@ fi
 # -i turn of case checking
 # --files-with-matches show only the files that have a match
 # wc -l cmd does line count on the grep output
-x=$(grep -Ri "${SEARCHSTR}" "${FILESDIR}" --files-with-matches | wc -l)
+x=$(grep -Ri "${SEARCHSTR}" "${FILESDIR}" -l | wc -l)
 
 y=$(grep -Ri "${SEARCHSTR}" "${FILESDIR}" | wc -l)
 

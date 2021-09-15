@@ -54,6 +54,7 @@ int my_writer(char *writefile, char *writestr)
         { 
 
             syslog(LOG_ERR, "Error with write(), errno is %d (%s)", errno, strerror(errno));
+            close(fd);	
             return 1;
         }
 
@@ -66,6 +67,7 @@ int my_writer(char *writefile, char *writestr)
     {
 
         syslog(LOG_ERR, "Maximum no. of reties %u reached for write()", retries);
+        close(fd);	
         return 1;
 
     }
