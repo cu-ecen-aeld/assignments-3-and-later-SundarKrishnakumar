@@ -64,9 +64,9 @@ fi
 
 
 
-echo "Removing the old writer utility and compiling as a native application"
-make clean
-make
+#echo "Removing the old writer utility and compiling as a native application"
+#make clean
+#make
 
 # writer and finder.sh are in $PATH, so need not use ./ in front of them
 for i in $( seq 1 $NUMFILES)
