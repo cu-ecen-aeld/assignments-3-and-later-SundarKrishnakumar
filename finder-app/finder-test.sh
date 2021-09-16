@@ -49,7 +49,7 @@ else
 fi
 
 # Check if writer until is in PATH
-if [ -z $(which ${WRITER_UTIL}) 
+if [ -z $(which ${WRITER_UTIL}) ]
 then
 	echo "${WRITER_UTIL} not in PATH"
 	exit 1
