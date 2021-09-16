@@ -9,7 +9,7 @@ NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
 OUTPUTDIR=/tmp/assignment-4-result.txt
-username=$(cat conf/username.txt)
+username=$(cat /etc/finder-app/conf/username.txt)
 
 # the writer unitility executable name
 WRITER_UTIL=writer
