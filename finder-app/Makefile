@@ -1,5 +1,7 @@
 CC=${CROSS_COMPILE}gcc
 
+all: default
+
 default: writer
 
 writer: writer.c
