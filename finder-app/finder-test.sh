@@ -49,14 +49,14 @@ else
 fi
 
 # Check if writer until is in PATH
-if [ -z $(which ${WRITER_UTIL})]
+if [ -z $(which ${WRITER_UTIL}) 
 then
 	echo "${WRITER_UTIL} not in PATH"
 	exit 1
 fi
 
 # Check if finder script is in PATH
-if [ -z $(which ${FINDER_SCRIPT})]
+if [ -z $(which ${FINDER_SCRIPT}) ]
 then
 	echo "${FINDER_SCRIPT} not in PATH"
 	exit 1
@@ -64,9 +64,9 @@ fi
 
 
 
-#echo "Removing the old writer utility and compiling as a native application"
+# echo "Removing the old writer utility and compiling as a native application"
 #make clean
-#make
+# make
 
 # writer and finder.sh are in $PATH, so need not use ./ in front of them
 for i in $( seq 1 $NUMFILES)
