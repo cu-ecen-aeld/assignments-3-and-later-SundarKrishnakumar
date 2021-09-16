@@ -8,7 +8,14 @@ set -u
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
+OUTPUTDIR=/tmp/assignment-4-result.txt
 username=$(cat conf/username.txt)
+
+# the writer unitility executable name
+WRITER_UTIL=writer
+
+# finder script name
+FINDER_SCRIPT=finder.sh
 
 if [ $# -lt 2 ]
 then
@@ -41,16 +48,36 @@ else
 	exit 1
 fi
 
-#echo "Removing the old writer utility and compiling as a native application"
-#make clean
-#make
+# Check if writer until is in PATH
+if [ -z $(which ${WRITER_UTIL})]
+then
+	echo "${WRITER_UTIL} not in PATH"
+	exit 1
+fi
 
+# Check if finder script is in PATH
+if [ -z $(which ${FINDER_SCRIPT})]
+then
+	echo "${FINDER_SCRIPT} not in PATH"
+	exit 1
+fi
+
+
+
+echo "Removing the old writer utility and compiling as a native application"
+make clean
+make
+
+# writer and finder.sh are in $PATH, so need not use ./ in front of them
 for i in $( seq 1 $NUMFILES)
 do
-	./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	${WRITER_UTIL} "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 done
 
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+# output of the finder command to /tmp/assignment-4-result.txt
+OUTPUTSTRING=$(${FINDER_SCRIPT} "$WRITEDIR" "$WRITESTR")
+
+echo ${OUTPUTSTRING} > ${OUTPUTDIR}
 
 set +e
 echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
