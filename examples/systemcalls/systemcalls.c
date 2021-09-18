@@ -50,8 +50,7 @@ bool do_system(const char *cmd)
                 }
             }
             else
-            {
-                
+            {                
                 return false;
             }
 
@@ -153,7 +152,6 @@ bool do_exec(int count, ...)
             }
             else
             {
-
                 return false;
             }
 
