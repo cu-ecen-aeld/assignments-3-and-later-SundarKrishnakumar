@@ -368,6 +368,7 @@ exit_segment:
 
 	close(fd);	
 	close(server_fd);
+    close(client_fd);
     closelog();
 
    if(remove(FILE_NAME) < 0) 
