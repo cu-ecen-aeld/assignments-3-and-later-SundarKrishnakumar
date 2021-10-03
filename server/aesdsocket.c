@@ -66,6 +66,7 @@ void exit_handler(int signum)
 
     close(fd);	
 	close(server_fd);
+    close(client_fd);
     closelog();
 
     // Delete file
