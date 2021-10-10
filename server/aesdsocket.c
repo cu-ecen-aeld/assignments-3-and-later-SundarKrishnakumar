@@ -28,6 +28,7 @@
 #include <time.h>
 #include <sys/time.h>
 
+
 #define PORT 9000
 #define MAX_CONNECTS 20
 #define FILE_NAME "/var/tmp/aesdsocketdata"
@@ -65,7 +66,6 @@ struct slist_data_s {
 // mutex lock variable
 pthread_mutex_t mutex_lock;
 
-
 slist_data_t *datap = NULL;
 slist_data_t *tmp = NULL; 
 SLIST_HEAD(slisthead, slist_data_s) head;
@@ -93,30 +93,16 @@ void *get_in_addr(struct sockaddr *sa)
 // graceful exit
 void exit_handler(int signum)
 {
-
-    syslog(LOG_DEBUG, "Caught signal, exiting");
-
-    close(fd);	
-	close(server_fd);
-    closelog();
-    
-    // Remove linked list elements
-
-
-     // TODO: destroy lock
-
-
-    // TODO: replace re-entrant functions
-
-    // Delete file
-    if(remove(FILE_NAME) < 0) 
+    if (signum == SIGINT || signum == SIGTERM)
     {
-        syslog(LOG_DEBUG, "Unable to delete the file at %s", FILE_NAME);
-        exit(-1);
-        
+        syslog(LOG_DEBUG, "Caught signal, exiting");
+
+        if(0 != shutdown(server_fd, SHUT_RDWR))
+        {
+            syslog(LOG_DEBUG, "shutdown failed");
+        }
     }
 
-    exit(0);
 }
 
 void timer_handler(int signum)
@@ -140,7 +126,8 @@ void timer_handler(int signum)
 
     if ( 0 != pthread_mutex_lock(&mutex_lock))
     {
-        perror("While acquiring the lock");
+        syslog(LOG_ERR, "While acquiring the lock");
+      
         goto timer_handler_exit_segment;
     }
 
@@ -148,23 +135,21 @@ void timer_handler(int signum)
     ret = write(fd, print_buffer, write_size);
     if (ret < 0)
     {
-        perror("While writing to file");
+        syslog(LOG_ERR, "While writing to file");
         goto timer_handler_exit_segment;
         
     }
 
-
-
-    // TODO: put a check for 10001st packet
-
-    lin_sz_table[line_sz_index++] = write_size;
-    
+    // Put a check for 10001st packet
+    lin_sz_table[line_sz_index] = write_size;
+    line_sz_index = (line_sz_index + 1) % LINE_SZ_TABLE_MAX;
 
     if ( 0 != pthread_mutex_unlock(&mutex_lock))
     {
-        perror("While releasing the lock");
+        syslog(LOG_ERR, "While releasing the lock");
         goto timer_handler_exit_segment;
     }    
+
 
 timer_handler_exit_segment:
     return;
@@ -181,7 +166,6 @@ void* threadfunc(void* thread_param)
     pthread_mutex_t *lock = local_param->mutex_lock;
 
     char buffer[BUFFER_SIZE];
-
 
     int read_size = 0;
     int ret = 0;
@@ -223,7 +207,7 @@ void* threadfunc(void* thread_param)
 
         if (read_size < 0)
         {
-            perror("While receiving socket data");
+            syslog(LOG_ERR, "While receiving socket data");
             error_in_thread = true;
             goto thread_exit_segment;
 
@@ -262,7 +246,7 @@ void* threadfunc(void* thread_param)
 
     if ( 0 != pthread_mutex_lock(lock))
     {
-        perror("While acquiring the lock");
+        syslog(LOG_ERR, "While acquiring the lock");
         error_in_thread = true;
         goto thread_exit_segment;
     }
@@ -272,19 +256,17 @@ void* threadfunc(void* thread_param)
     ret = write(fd, dyn_buffer1, cur_size);
     if (ret < 0)
     {
-        perror("While writing to file");
+        syslog(LOG_ERR, "While writing to file");
         error_in_thread = true;
         goto thread_exit_segment;
         
     }
 
-    // TODO: put a check for 10001st packet
-
-    lin_sz_table[line_sz_index++] = cur_size;
-
+    // put a check for 10001st packet
+    lin_sz_table[line_sz_index] = cur_size;
+    line_sz_index = (line_sz_index + 1) % LINE_SZ_TABLE_MAX;
 
     // send packet by packet i.e line by line
-
     curr_pos = lseek(fd, 0, SEEK_CUR);
     lseek(fd, 0, SEEK_SET);
 
@@ -302,7 +284,7 @@ void* threadfunc(void* thread_param)
         ret = read(fd, dyn_buffer2, lin_sz_table[i]);
         if (ret < 0)
         {
-            perror("While reading from file");
+            syslog(LOG_ERR, "While reading from file");
             error_in_thread = true;
             goto thread_exit_segment;
             
@@ -311,7 +293,7 @@ void* threadfunc(void* thread_param)
         ret = send(client_fd, dyn_buffer2, lin_sz_table[i], 0);
         if (ret < 0)
         {
-            perror("While sending socket data");
+            syslog(LOG_ERR, "While sending socket data");
             error_in_thread = true;
             goto thread_exit_segment;
             
@@ -327,7 +309,7 @@ void* threadfunc(void* thread_param)
 
     if ( 0 != pthread_mutex_unlock(lock))
     {
-        perror("While releasing the lock");
+        syslog(LOG_ERR, "While releasing the lock");
         error_in_thread = true;
         goto thread_exit_segment;
     }
@@ -343,27 +325,24 @@ void* threadfunc(void* thread_param)
         goto thread_exit_segment;
     }
 
-thread_exit_segment:
-    
+thread_exit_segment:    
    
-   if (error_in_thread == true)
-   {
-       if (dyn_buffer1 != NULL)
-       {
-           free(dyn_buffer1);
-       }
+    if (error_in_thread == true)
+    {
+        if (dyn_buffer1 != NULL)
+        {
+            free(dyn_buffer1);
+        }
 
         if (dyn_buffer2 != NULL)
-       {
-           free(dyn_buffer2);
-       }
+        {
+            free(dyn_buffer2);
+        }
 
-   }
+    }
 
-
-   // set complete to false
-   local_param->complete = true;
-
+    // set complete to false
+    local_param->complete = true;
 
     return NULL;
 
@@ -418,7 +397,7 @@ int main(int argc, char *argv[])
 
         if(sid < 0)
         {
-            perror("While starting new session in child");
+            syslog(LOG_ERR, "While starting new session in child");
             error = true;
             goto exit_segment;
 
@@ -445,7 +424,7 @@ int main(int argc, char *argv[])
     if (setitimer (ITIMER_REAL, &timer, NULL) != 0)
     {
 
-        perror("While setting 10s timer");
+        syslog(LOG_ERR, "While setting 10s timer");
         error = true;
         goto exit_segment;
       
@@ -466,11 +445,10 @@ int main(int argc, char *argv[])
     // initialize the lock
     if (pthread_mutex_init(&mutex_lock, NULL) != 0) 
     {
-        perror("While intializing mutex");
+        syslog(LOG_ERR, "While intializing mutex");
         error = true;
         goto exit_segment;
-    }    
-
+    }  
 
     // Create socket here
     // AF_INET - Network not a unix socket
@@ -479,7 +457,7 @@ int main(int argc, char *argv[])
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd < 0) 
     {
-        perror("While creating socket");
+        syslog(LOG_ERR, "While creating socket");
         error = true;
         goto exit_segment;
     }	
@@ -491,7 +469,7 @@ int main(int argc, char *argv[])
 
     int flag = 1;  
     if (0 != setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag))) {  
-        perror("setsockopt fail"); 
+        syslog(LOG_ERR, "setsockopt fail"); 
         error = true;
         goto exit_segment;         
     }      
@@ -499,7 +477,7 @@ int main(int argc, char *argv[])
 
  	if(bind(server_fd, (struct sockaddr*)&server_addr, sizeof(struct sockaddr_in)) < 0)
 	{
-		perror("While binding to the port");
+		syslog(LOG_ERR, "While binding to the port");
         error = true;
         goto exit_segment;
 	}
@@ -508,7 +486,7 @@ int main(int argc, char *argv[])
 	// MAX_CONNECTS - queue size of pending connections
 	if(listen(server_fd, MAX_CONNECTS) < 0)
 	{
-		perror("While listening");
+		syslog(LOG_ERR, "While listening");
         error = true;
         goto exit_segment;
 	}
@@ -530,15 +508,23 @@ int main(int argc, char *argv[])
 
         if (client_fd < 0)
         {
-            perror("While accepting client");
+            syslog(LOG_ERR, "While accepting client");
             error = true;
             goto exit_segment;
         } 
 
-        // TODO: Prepare thread local variable for new thread    
+        // Prepare thread local variable for new thread    
         // and enter the node in the list
-        // TODO: check malloc error code
-        datap = malloc(sizeof(slist_data_t));
+        // check malloc error code
+        datap = (slist_data_t *)malloc(sizeof(slist_data_t));
+        if (datap == NULL)
+        {
+            syslog(LOG_ERR, "(datap) malloc returned NULL");
+            error = true;
+            goto exit_segment;
+        }
+
+        
         datap->thread_param.client_fd = client_fd;
         datap->thread_param.complete = false;  
         datap->thread_param.mutex_lock = &mutex_lock;
@@ -548,7 +534,7 @@ int main(int argc, char *argv[])
                 (sigaddset(&datap->thread_param.intmask, SIGTERM) == -1))
         {
             
-            perror("Failed to initialize the signal mask");
+            syslog(LOG_ERR, "Failed to initialize the signal mask");
             error = true;
             goto exit_segment;
 
@@ -557,10 +543,17 @@ int main(int argc, char *argv[])
         SLIST_INSERT_HEAD(&head, datap, entries);    
         
 
-        // TODO: create new thread here and handle failure
-        pthread_create(&(datap->thread_param.thread_id), NULL, &threadfunc, (void *) &(datap->thread_param));
+        // create new thread here and handle failure
+        if (0 != pthread_create(&(datap->thread_param.thread_id), NULL, &threadfunc, (void *) &(datap->thread_param)))
+        {
 
-        // TODO: Check if any thread completed
+            syslog(LOG_ERR, "Failed to create a new thread");
+            error = true;
+            goto exit_segment;            
+
+        }
+
+        // Check if any thread completed
         SLIST_FOREACH_SAFE(datap, &head, entries, tmp) 
         {
 
@@ -593,30 +586,35 @@ int main(int argc, char *argv[])
 exit_segment:
 
 	close(fd);	
-	close(server_fd);
+	close(server_fd);    
     
-    // TODO: delete linked list
+    // delete linked list
     SLIST_FOREACH_SAFE(datap, &head, entries, tmp) 
     {
 
         if (datap->thread_param.complete == true)
         {
-            SLIST_REMOVE(&head, datap, slist_data_s, entries); 
-            free(datap);
-            datap = NULL;
-        }        
+            pthread_join(datap->thread_param.thread_id,  NULL);
+        } 
+
+        close(datap->thread_param.client_fd);
+
+        SLIST_REMOVE(&head, datap, slist_data_s, entries); 
+        free(datap);
+        datap = NULL;
+              
         
     }    
 
     // destroy lock
     pthread_mutex_destroy(&mutex_lock);
 
-    closelog();
-
    if(remove(FILE_NAME) < 0) 
    {
-      syslog(LOG_DEBUG, "Unable to delete the file at %s", FILE_NAME);
+      syslog(LOG_ERR, "Unable to delete the file at %s", FILE_NAME);
    }
+
+   closelog();
 
    if (error == true)
    {
