@@ -33,8 +33,8 @@
 #define FILE_NAME "/var/tmp/aesdsocketdata"
 #define BUFFER_SIZE 100
 #define LINE_SZ_TABLE_MAX 10000
-#define TIME_BUFFER_SIZE 80
-#define PRINT_BUFFER_SIZE 100
+#define TIME_BUFFER_SIZE 150
+#define PRINT_BUFFER_SIZE 200
 
 
 // global variables
@@ -137,7 +137,7 @@ void timer_handler(int signum)
     sprintf(print_buffer, "timestamp:%s\n", time_buffer);  
 
 
-    write_size = strlen(print_buffer) + 1;
+    write_size = strlen(print_buffer);
 
     if ( 0 != pthread_mutex_lock(&mutex_lock))
     {
