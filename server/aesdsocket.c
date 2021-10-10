@@ -41,7 +41,7 @@
 struct sockaddr_in server_addr, client_addr;
 socklen_t addrlen;
 int server_fd, fd;
-char buffer[BUFFER_SIZE];
+
 
 typedef struct thread_param_s thread_param_t;
 struct  thread_param_s
@@ -61,13 +61,6 @@ struct slist_data_s {
     thread_param_t thread_param;
     SLIST_ENTRY(slist_data_s) entries;
 };
-
-// timer related variables
-time_t rawtime;
-struct tm *info;
-char time_buffer[TIME_BUFFER_SIZE];
-char print_buffer[PRINT_BUFFER_SIZE];
-
 
 // mutex lock variable
 pthread_mutex_t mutex_lock;
@@ -131,6 +124,12 @@ void timer_handler(int signum)
 
     int ret;
     int write_size;
+
+    time_t rawtime;
+    struct tm *info;
+    char time_buffer[TIME_BUFFER_SIZE];
+    char print_buffer[PRINT_BUFFER_SIZE];
+
     time( &rawtime );
     info = localtime( &rawtime );
     strftime(time_buffer, TIME_BUFFER_SIZE, "%Y/%m/%d-%H:%M:%S", info);
@@ -180,6 +179,8 @@ void* threadfunc(void* thread_param)
     sigset_t intmask = local_param->intmask;
     int client_fd = local_param->client_fd;
     pthread_mutex_t *lock = local_param->mutex_lock;
+
+    char buffer[BUFFER_SIZE];
 
 
     int read_size = 0;
