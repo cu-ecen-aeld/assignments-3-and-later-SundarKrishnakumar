@@ -49,6 +49,10 @@ struct aesd_circular_buffer
 	 * set to true when the buffer entry structure is full
 	 */
 	bool full;
+	/**
+	 * The current length of the circular buffer
+	 */
+	uint8_t len;
 };
 
 extern struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct aesd_circular_buffer *buffer,
@@ -57,6 +61,10 @@ extern struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos
 extern void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry);
 
 extern void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer);
+
+extern bool is_empty(struct aesd_circular_buffer *buffer);
+
+extern bool is_full(struct aesd_circular_buffer *buffer);
 
 /**
  * Create a for loop to iterate over each member of the circular buffer.

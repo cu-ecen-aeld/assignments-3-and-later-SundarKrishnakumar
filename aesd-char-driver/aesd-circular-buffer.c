@@ -12,6 +12,7 @@
 #include <linux/string.h>
 #else
 #include <string.h>
+#include <stdio.h>
 #endif
 
 #include "aesd-circular-buffer.h"
@@ -32,7 +33,44 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     /**
     * TODO: implement per description
     */
-    return NULL;
+	
+	// Do a NULL check on the buffer
+	if (buffer == NULL) return NULL;
+
+	size_t index = buffer->out_offs;
+	size_t offset = buffer->entry[index].size;
+
+
+
+	while ((char_offset / offset) != 0)
+	{
+
+		index += 1;
+		index = index % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+
+		// if the current index value is greater that in_offs
+		// then that location has not been written yet.
+		if ((is_full(buffer) == false) && (index > buffer->in_offs))
+		{
+			
+			return NULL;
+		}
+
+		if ((is_full(buffer) == true) && (index == buffer->in_offs))
+		{
+			
+			return NULL;
+		}		
+		
+		offset += buffer->entry[index].size;
+	}
+
+
+	offset = char_offset - (offset - buffer->entry[index].size);
+	
+	*entry_offset_byte_rtn = offset;
+
+    return &(buffer->entry[index]);
 }
 
 /**
@@ -47,6 +85,26 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
     /**
     * TODO: implement per description 
     */
+
+	if (buffer == NULL || add_entry == NULL) return;
+
+	buffer->entry[buffer->in_offs].buffptr = add_entry->buffptr;
+	buffer->entry[buffer->in_offs].size = add_entry->size;	
+
+	if (is_full(buffer) == true)
+	{
+		buffer->full = true;
+		buffer->out_offs  = ((buffer->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED);
+	}
+	else
+	{
+		buffer->full = false;	
+		buffer->len++;	
+	}
+	
+	buffer->in_offs = ((buffer->in_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED);
+
+   
 }
 
 /**
@@ -55,4 +113,31 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
 void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer)
 {
     memset(buffer,0,sizeof(struct aesd_circular_buffer));
+}
+
+bool is_empty(struct aesd_circular_buffer *buffer)
+{
+
+	if (buffer->len == 0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
+bool is_full(struct aesd_circular_buffer *buffer)
+{
+
+	if (buffer->len == AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
