@@ -37,8 +37,8 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
 	// Do a NULL check on the buffer
 	if (buffer == NULL) return NULL;
 
-	size_t index = buffer->out_offs;
-	size_t offset = buffer->entry[index].size;
+	uint8_t index = buffer->out_offs;
+	uint64_t offset = (uint64_t)buffer->entry[index].size;
 
 
 
