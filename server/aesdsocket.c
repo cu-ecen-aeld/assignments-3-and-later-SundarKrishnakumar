@@ -385,7 +385,7 @@ int main(int argc, char *argv[])
     int opt = 0;
     bool error = false;
     int client_fd;
-    int fd;
+    
 
     // set up signint handler
     signal(SIGINT, exit_handler);
@@ -529,18 +529,14 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef USE_AESD_CHAR_DEVICE
-    fd = open(FILE_NAME, O_RDWR | O_CREAT, 0644);
-#else
-    fd = open(FILE_NAME, O_RDWR, 0644);
-#endif
-
+    int fd = open(FILE_NAME, O_RDWR | O_CREAT, 0644);
 	if ( fd < 0 ) 
 	{
 		syslog(LOG_ERR, "Error with open(), errno is %d (%s)", errno, strerror(errno));
         error = true;
         goto exit_segment;
 	}
-        
+#endif      
 
 	while(1)
 	{ 
@@ -626,7 +622,10 @@ int main(int argc, char *argv[])
 
 exit_segment:
 
+#ifndef USE_AESD_CHAR_DEVICE
 	close(fd);	
+#endif
+
 	close(server_fd);    
     
     // delete linked list
