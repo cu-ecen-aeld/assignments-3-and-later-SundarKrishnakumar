@@ -184,6 +184,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 	}
 
+	kfree(device->tmp);
+
 	// release the lock
 	mutex_unlock(&device->mutex);
 
