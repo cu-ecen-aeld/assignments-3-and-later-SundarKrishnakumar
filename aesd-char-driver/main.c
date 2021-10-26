@@ -140,6 +140,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 	if (copy_from_user(device->tmp, buf, count) != 0)
 	{
+		kfree(device->tmp);
 		return -EFAULT;
 	}
 
@@ -151,6 +152,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	{
 		// if kzalloc fails reinstate the previous ptr value from swap
 		device->entry.buffptr = swap;
+		kfree(device->tmp);
 		return -ENOMEM;
 	}
 
