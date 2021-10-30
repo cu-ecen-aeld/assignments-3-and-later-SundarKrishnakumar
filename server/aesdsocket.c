@@ -28,10 +28,16 @@
 #include <time.h>
 #include <sys/time.h>
 
+#define USE_AESD_CHAR_DEVICE 1
 
 #define PORT 9000
 #define MAX_CONNECTS 20
-#define FILE_NAME "/var/tmp/aesdsocketdata"
+#ifdef USE_AESD_CHAR_DEVICE
+#   define FILE_NAME "/dev/aesdchar"
+#else
+#   define FILE_NAME "/var/tmp/aesdsocketdata"
+#endif
+
 #define BUFFER_SIZE 100
 #define LINE_SZ_TABLE_MAX 10000
 #define TIME_BUFFER_SIZE 150
@@ -41,13 +47,14 @@
 // global variables
 struct sockaddr_in server_addr, client_addr;
 socklen_t addrlen;
-int server_fd, fd;
+int server_fd;
 
 
 typedef struct thread_param_s thread_param_t;
 struct  thread_param_s
 {
     int client_fd;
+    int fd;
     sigset_t intmask;  
     bool complete;  
     pthread_t thread_id;
@@ -110,7 +117,7 @@ void timer_handler(int signum)
 
     int ret;
     int write_size;
-
+    int fd;
     time_t rawtime;
     struct tm *info;
     char time_buffer[TIME_BUFFER_SIZE];
@@ -121,6 +128,15 @@ void timer_handler(int signum)
     strftime(time_buffer, TIME_BUFFER_SIZE, "%Y/%m/%d-%H:%M:%S", info);
     sprintf(print_buffer, "timestamp:%s\n", time_buffer);  
 
+
+    fd = open(FILE_NAME, O_RDWR);
+
+
+	if ( fd < 0 ) 
+	{
+		syslog(LOG_ERR, "Error with open(), errno is %d (%s)", errno, strerror(errno));
+        goto timer_handler_exit_segment;
+	}      
 
     write_size = strlen(print_buffer);
 
@@ -152,6 +168,7 @@ void timer_handler(int signum)
 
 
 timer_handler_exit_segment:
+    close(fd);
     return;
 
 }
@@ -166,7 +183,7 @@ void* threadfunc(void* thread_param)
     pthread_mutex_t *lock = local_param->mutex_lock;
 
     char buffer[BUFFER_SIZE];
-
+    int fd;
     int read_size = 0;
     int ret = 0;
     bool terminate = false;
@@ -177,6 +194,16 @@ void* threadfunc(void* thread_param)
     int multiplier = 2;
     long curr_pos = 0;
     bool error_in_thread = false;
+
+    fd = open(FILE_NAME, O_RDWR);
+    ((thread_param_t *)thread_param)->fd = fd;
+
+	if ( fd < 0 ) 
+	{
+		syslog(LOG_ERR, "Error with open(), errno is %d (%s)", errno, strerror(errno));
+        error_in_thread = true;
+        goto thread_exit_segment;
+	}    
 
     // Block the signals SIGINT and SIGTERM here
     if (sigprocmask(SIG_BLOCK, &intmask, NULL) < 0)
@@ -282,6 +309,7 @@ void* threadfunc(void* thread_param)
         }
         
         ret = read(fd, dyn_buffer2, lin_sz_table[i]);
+
         if (ret < 0)
         {
             syslog(LOG_ERR, "While reading from file");
@@ -316,6 +344,7 @@ void* threadfunc(void* thread_param)
 
 
     close(client_fd);
+    close(fd);
     syslog(LOG_DEBUG,"Closed connection from %s", s);  
 
     // Unblock the signals SIGINT and SIGTERM here
@@ -356,6 +385,7 @@ int main(int argc, char *argv[])
     int opt = 0;
     bool error = false;
     int client_fd;
+    
 
     // set up signint handler
     signal(SIGINT, exit_handler);
@@ -413,7 +443,9 @@ int main(int argc, char *argv[])
 
     }      
 
- 
+ #ifndef USE_AESD_CHAR_DEVICE
+
+
     // Configure and start 10s timer
     signal(SIGALRM, timer_handler);
     struct itimerval timer;
@@ -421,6 +453,9 @@ int main(int argc, char *argv[])
     timer.it_value.tv_usec = 0;
     timer.it_interval.tv_sec = 10;
     timer.it_interval.tv_usec = 0;
+
+
+
     if (setitimer (ITIMER_REAL, &timer, NULL) != 0)
     {
 
@@ -429,6 +464,8 @@ int main(int argc, char *argv[])
         goto exit_segment;
       
     }  
+
+#endif
 
     // Setup syslog. Uses LOG_USER facility.
     openlog(NULL, 0, LOG_USER);
@@ -491,16 +528,15 @@ int main(int argc, char *argv[])
         goto exit_segment;
 	}
 
-    // Creating output file
-    // NOTE: fd is a global variable and is not supplied as param to each thread
-    fd = open(FILE_NAME, O_RDWR | O_CREAT, 0644);
+#ifndef USE_AESD_CHAR_DEVICE
+    int fd = open(FILE_NAME, O_RDWR | O_CREAT, 0644);
 	if ( fd < 0 ) 
 	{
 		syslog(LOG_ERR, "Error with open(), errno is %d (%s)", errno, strerror(errno));
         error = true;
         goto exit_segment;
 	}
-        
+#endif      
 
 	while(1)
 	{ 
@@ -570,7 +606,8 @@ int main(int argc, char *argv[])
 
                 }
 
-
+                close(datap->thread_param.client_fd);
+                close(datap->thread_param.fd);
                 SLIST_REMOVE(&head, datap, slist_data_s, entries); 
                 free(datap);
                 datap = NULL;
@@ -585,7 +622,10 @@ int main(int argc, char *argv[])
 
 exit_segment:
 
+#ifndef USE_AESD_CHAR_DEVICE
 	close(fd);	
+#endif
+
 	close(server_fd);    
     
     // delete linked list
@@ -598,6 +638,7 @@ exit_segment:
         } 
 
         close(datap->thread_param.client_fd);
+        close(datap->thread_param.fd);
 
         SLIST_REMOVE(&head, datap, slist_data_s, entries); 
         free(datap);
@@ -609,10 +650,14 @@ exit_segment:
     // destroy lock
     pthread_mutex_destroy(&mutex_lock);
 
-   if(remove(FILE_NAME) < 0) 
-   {
-      syslog(LOG_ERR, "Unable to delete the file at %s", FILE_NAME);
-   }
+#ifndef USE_AESD_CHAR_DEVICE
+    if(remove(FILE_NAME) < 0) 
+    {
+        syslog(LOG_ERR, "Unable to delete the file at %s", FILE_NAME);
+    }
+#endif
+
+
 
    closelog();
 
